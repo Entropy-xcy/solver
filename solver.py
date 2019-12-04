@@ -69,13 +69,36 @@ geometric_predicates['sum'] = [['a1a', 'a8e', 180], ['a8e', 'a5c', 180],
                                ['a3c', 'a8c', 180], ['a8a', 'a2a', 180],
                                ['a8d', 'a1b', 'a2c', 180]]
 geometric_predicates['similar'] = []
+original_parallel = []
 
+angle_record_table = {'a1a': -1, 'a1b': -1, 'a1c': -1,
+                      'a2a': -1, 'a2b': -1, 'a2c': -1,
+                      'a3a': -1, 'a3b': -1, 'a3c': -1,
+                      'a4a': -1, 'a4b': -1, 'a4c': -1,
+                      'a5a': -1, 'a5b': -1, 'a5c': -1,
+                      'a6a': -1, 'a6b': -1, 'a6c': -1,
+                      'a7a': -1, 'a7b': -1, 'a7c': -1,
+                      'a8a': -1, 'a8b': -1, 'a8c': -1,
+                      'a8d': -1, 'a8e': -1}
+
+edge_record_table = {'e1a': -1, 'e1b': -1, 'e1c': -1,
+                      'e2a': -1, 'e2b': -1, 'e2c': -1,
+                      'e3a': -1, 'e3b': -1, 'e3c': -1,
+                      'e4a': -1, 'e4b': -1, 'e4c': -1,
+                      'e5a': -1, 'e5b': -1, 'e5c': -1,
+                      'e6a': -1, 'e6b': -1, 'e6c': -1,
+                      'e7a': -1, 'e7b': -1, 'e7c': -1,
+                      'e8a': -1, 'e8b': -1, 'e8c': -1,
+                      'e8d': -1, 'e8e': -1}
+
+area_record_table = {'ar1': -1, 'ar2': -1, 'ar3': -1,
+                     'ar4': -1, 'ar5': -1, 'ar6': -1,
+                     'ar7': -1, 'ar8': -1}
 
 for i in range(1, 8):
     triangles.append(triangle(str(i)))
 for t in triangles:
     all_elements += t.flatten()
-print(all_elements)
 
 
 def delete_repetition(sett):
@@ -172,53 +195,47 @@ def test_sum():
     pass
 
 
-def infer_parallel(sensitive_elements):
-    sols = []
-    parallels = geometric_predicates['parallel']
-    sensitive_pairs = []
-    for p in parallels:
-        for s in sensitive_elements:
-            if s in p:
-                sensitive_pairs.append(p)
-    for p in sensitive_pairs:
-        if is_subsubset_of(p, sols):
-            pass
-        elif has_element_of(sols, p):
-            for s in sols:
-                for ele in s:
-                    if ele in p:
-                        s += p
-                        delete_repetition(s)
-        else:
-            sols.append(p)
-    return sols
-
-
-def test_parallel():
-    # Test Parallel First
-    parallels = geometric_predicates['parallel']
-    flatten = []
-    for i in parallels:
+def contains(sol, name):
+    for i in sol:
         for j in i:
-            flatten.append(j)
+            if name == j:
+                return True
+    return False
 
-    for elements in flatten:
-        count = 0
-        sols = []
-        for i in range(len(parallels)):
-            if elements in parallels[i]:
-                count += 1
-        if count > 1:
-            set_elements = []
-            for pairs in parallels:
-                if elements in pairs:
-                    set_elements += pairs
-                    set_elements = delete_repetition(set_elements)
-            sols += set_elements
-        print(sols)
-        if sols != []:
-            solution['parallel'].append(sols)
-            geometric_predicates['parallel'].append(sols)
+
+def common_member(a, b):
+    a_set = set(a)
+    b_set = set(b)
+
+    # check length
+    if len(a_set.intersection(b_set)) > 0:
+        return list(a_set.intersection(b_set))
+    else:
+        return []
+
+
+def test_perpendicular():
+    perpendiculars = geometric_predicates['perpendicular'].copy()
+    for i in range(len(perpendiculars)):
+        for j in range(len(perpendiculars)):
+            if i!=j and len(common_member(perpendiculars[i], perpendiculars[j])) > 0:
+                perpendiculars[i] += perpendiculars[j]
+                perpendiculars[j] = []
+    while [] in perpendiculars:
+        perpendiculars.remove([])
+
+    for p in perpendiculars:
+        max = 0
+        max_element = ''
+        for angle in p:
+            if p.count(angle) > max:
+                max = p.count(angle)
+                max_element = angle
+        while max_element in p:
+            p.remove(max_element)
+    # Infer parallels
+    print(perpendiculars)
+    geometric_predicates['parallel'] += perpendiculars
 
 
 def test_angle():
@@ -226,9 +243,38 @@ def test_angle():
     for per_instance in perpendiculars:
         pass
 
+def is_same(l1, l2):
+    l11 = l1.copy()
+    l22 = l2.copy()
+    l11.sort()
+    l22.sort()
+    return l11 == l22
+
+def test_parallel():
+    parallels = geometric_predicates['parallel'].copy()
+    for i in range(len(parallels)):
+        for j in range(len(parallels)):
+            if i!= j and len(common_member(parallels[i], parallels[j])) > 0:
+                parallels[i] += parallels[j]
+                parallels[j] = []
+    for i in range(len(parallels)):
+        parallels[i] = delete_repetition(parallels[i])
+    while [] in parallels:
+        parallels.remove([])
+    orig = geometric_predicates['parallel']
+    for i in parallels:
+        has = False
+        for j in orig:
+            if is_same(i, j):
+                has = True
+        if not has:
+            solution['parallel'].append(i)
+    geometric_predicates['parallel'] = parallels
+
 
 def solve():
     test_equal()
+    test_perpendicular()
     test_parallel()
     test_angle()
 
@@ -241,6 +287,10 @@ def get_all():
 def main():
     set_equal('a5b', 'a5c')
     set_parallel('e7a', 'e2b')
+    set_perpendicular('e1a', 'e2a')
+    set_perpendicular('e2a', 'e3a')
+
+    original_parallel = geometric_predicates['parallel']
     print(get_all())
 
 
