@@ -66,7 +66,12 @@ geometric_predicates['sum'] = [['a1a', 'a8e', 180], ['a8e', 'a5c', 180],
                                ['a5b', 'a8a', 180], ['a8a', 'a4c', 180],
                                ['a4b', 'a8b', 180], ['a8b', 'a3a', 180],
                                ['a3c', 'a8c', 180], ['a8a', 'a2a', 180],
-                               ['a8d', 'a1b', 'a2c', 180]]
+                               ['a2a', 'a8c', 180], ['a8a', 'a3c', 180]]
+original_sum_table = [['a1a', 'a8e', 180], ['a8e', 'a5c', 180],
+                               ['a5b', 'a8a', 180], ['a8a', 'a4c', 180],
+                               ['a4b', 'a8b', 180], ['a8b', 'a3a', 180],
+                               ['a3c', 'a8c', 180], ['a8a', 'a2a', 180],
+                      ['a2a', 'a8c', 180], ['a8a', 'a3c', 180]]
 geometric_predicates['similar'] = []
 original_parallel = []
 
@@ -244,6 +249,7 @@ def test_perpendicular():
             flag = True
         if flag:
             geometric_predicates['parallel'].append(p)
+            # solution['parallel'].append(p)
     # Infer parallels
     # geometric_predicates['parallel'] += perpendiculars
 
@@ -347,13 +353,107 @@ def map_perpendicular_to_angle():
                     angle_record_table[key] = 90
 
 
+def map_equal_to_angle():
+    for e in geometric_predicates['equal'].copy():
+        angle_flag = False
+        edge_flag = False
+        val = -1
+        for item in e:
+            if item in angle_record_table.keys():
+                # Angle
+                angle_flag = True
+                val = angle_record_table[item]
+            elif item in edge_record_table.keys():
+                # Edge
+                edge_flag = True
+                val = edge_record_table[item]
+            else:
+                print("Exception!!")
+        if angle_flag:
+            for item in e:
+                angle_record_table[item] = val
+        if edge_flag:
+            for item in e:
+                edge_record_table[item] = val
+
+
+def map_angle_to_perpendicular():
+    for key in angle_record_table.keys():
+        if angle_record_table[key] == 90:
+            set_perpendicular(edge_to_angle_table[key][0], edge_to_angle_table[key][1])
+
+
+def infer_angle_from_sum_fraction():
+    for s in geometric_predicates['sum']:
+        s0 = s[0]
+        s1 = s[1]
+        total = s[2]
+        if angle_record_table[s0] != -1 and angle_record_table[s1] == -1:
+            angle_record_table[s1] = int(total) - angle_record_table[s0]
+        elif angle_record_table[s0] == -1 and angle_record_table[s1] != -1:
+            angle_record_table[s0] = int(total) - angle_record_table[s1]
+
+    for s in geometric_predicates['fraction']:
+        s0 = s[0]
+        s1 = s[1]
+        fraction = s[2]
+        if angle_record_table[s0] != -1 and angle_record_table[s1] == -1:
+            angle_record_table[s1] = angle_record_table[s0] / float(fraction)
+        elif angle_record_table[s0] == -1 and angle_record_table[s1] != -1:
+            angle_record_table[s0] = float(fraction) * angle_record_table[s1]
+
+
+def infer_sum_fraction_from_equal():
+    for s in geometric_predicates['sum']:
+        s0 = s[0]
+        s1 = s[1]
+        sum = int(s[2])
+        for e in geometric_predicates['equal'].copy():
+            if s0 in e:
+                for i in e:
+                    if i != s0:
+                        solution['sum'].append([i, s1, sum])
+            elif s1 in e:
+                for i in e:
+                    if i!= s1:
+                        solution['sum'].append([s0, i, sum])
+
+    # Delete repetition from the predicates
+    for s in solution['sum'].copy():
+        s0 = s[0]
+        s1 = s[1]
+        if s0=='a8e':
+            print()
+        for ss in original_sum_table:
+            if (s0 == ss[0] and s1 == ss[1]) or (s0 == ss[1] and s1 == ss[0]):
+                solution['sum'].remove(s)
+
+    for s in geometric_predicates['fraction'].copy():
+        s0 = s[0]
+        s1 = s[1]
+        sum = int(s[2])
+        for e in geometric_predicates['equal'].copy():
+            if s0 in e:
+                for i in e:
+                    if i != s0:
+                        solution['fraction'].append([i, s1, sum])
+            elif s1 in e:
+                for i in e:
+                    if i!= s1:
+                        solution['fraction'].append([s0, i, sum])
+
+
 def test_similar():
     # The circumstance of similar is unique
     sensitive_edge = ['e6b', 'e7a']
-    for p in geometric_predicates['perpendicular'].copy():
+    for p in geometric_predicates['parallel'].copy():
         if sensitive_edge[0] in p and sensitive_edge[1] in p:
             solution['similar'].append(['ar1', 'ar5'])
             solution['similar'].append(['ar2', 'ar3'])
+
+
+def infer_area_fraction():
+    pass
 
 
 def solve():
@@ -361,6 +461,11 @@ def solve():
     test_perpendicular()
     test_parallel()
     map_perpendicular_to_angle()
+    map_angle_to_perpendicular()
+    test_perpendicular()
+    infer_angle_from_sum_fraction()
+    infer_sum_fraction_from_equal()
+    test_similar()
     test_angle()
 
 
@@ -369,11 +474,21 @@ def get_all():
     return solution
 
 
+def display_angle_edge():
+    for key in angle_record_table.keys():
+        if angle_record_table[key] != -1:
+            print(key, angle_record_table[key])
+    for key in edge_record_table.keys():
+        if edge_record_table[key] != -1:
+            print(key, edge_record_table[key])
+
+
 def main():
-    set_equal('a5b', 'a5c')
+    # set_equal('a5b', 'a5c')
+    # set_sum_value('a5b', 'a5a', 50)
     # set_parallel('e7a', 'e2b')
-    set_perpendicular('e1c', 'e1b')
-    set_perpendicular('e2a', 'e3a')
+    # set_perpendicular('e1c', 'e1b')
+    # set_perpendicular('e2a', 'e3a')
 
     # set_perpendicular('e3c', 'e3b')
     # et_perpendicular('e3b', 'e4a')
