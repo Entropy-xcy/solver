@@ -38,7 +38,6 @@ class triangle:
         return ret
 
 
-
 geometric_predicates = {}
 solution = {}
 triangles = []
@@ -82,18 +81,25 @@ angle_record_table = {'a1a': -1, 'a1b': -1, 'a1c': -1,
                       'a8d': -1, 'a8e': -1}
 
 edge_record_table = {'e1a': -1, 'e1b': -1, 'e1c': -1,
-                      'e2a': -1, 'e2b': -1, 'e2c': -1,
-                      'e3a': -1, 'e3b': -1, 'e3c': -1,
-                      'e4a': -1, 'e4b': -1, 'e4c': -1,
-                      'e5a': -1, 'e5b': -1, 'e5c': -1,
-                      'e6a': -1, 'e6b': -1, 'e6c': -1,
-                      'e7a': -1, 'e7b': -1, 'e7c': -1,
-                      'e8a': -1, 'e8b': -1, 'e8c': -1,
-                      'e8d': -1, 'e8e': -1}
+                     'e2a': -1, 'e2b': -1, 'e2c': -1,
+                     'e3a': -1, 'e3b': -1, 'e3c': -1,
+                     'e4a': -1, 'e4b': -1, 'e4c': -1,
+                     'e5a': -1, 'e5b': -1, 'e5c': -1,
+                     'e6a': -1, 'e6b': -1, 'e6c': -1,
+                     'e7a': -1, 'e7b': -1, 'e7c': -1,
+                     'e8a': -1, 'e8b': -1, 'e8c': -1,
+                     'e8d': -1, 'e8e': -1}
 
 area_record_table = {'ar1': -1, 'ar2': -1, 'ar3': -1,
                      'ar4': -1, 'ar5': -1, 'ar6': -1,
                      'ar7': -1, 'ar8': -1}
+
+edge_to_angle_table = {'a1c': ['e1b', 'e1c'], 'a2b': ['e2b', 'e2a'], 'a3b': ['e3b', 'e3a'],
+                       'a4a': ['e4c', 'e4a'], 'a5a': ['e5a', 'e5c'], 'a8d': ['e8d', 'e8c'],
+                       'a1a': ['e1c', 'e1a'], 'a8e': ['e8d', 'e8e'], 'a5b': ['e5a', 'e5b'],
+                       'a8a': ['e8e', 'e8a'], 'a4b': ['e4b', 'e4a'], 'a8b': ['e8a', 'e8b'],
+                       'a8c': ['e8c', 'e8b'], 'a3c': ['e3c', 'e3b']}
+
 
 for i in range(1, 8):
     triangles.append(triangle(str(i)))
@@ -216,32 +222,37 @@ def common_member(a, b):
 
 def test_perpendicular():
     perpendiculars = geometric_predicates['perpendicular'].copy()
+
     for i in range(len(perpendiculars)):
         for j in range(len(perpendiculars)):
-            if i!=j and len(common_member(perpendiculars[i], perpendiculars[j])) > 0:
+            if i != j and len(common_member(perpendiculars[i], perpendiculars[j])) > 0:
                 perpendiculars[i] += perpendiculars[j]
                 perpendiculars[j] = []
     while [] in perpendiculars:
         perpendiculars.remove([])
 
     for p in perpendiculars:
-        max = 0
+        max = 1
         max_element = ''
         for angle in p:
             if p.count(angle) > max:
                 max = p.count(angle)
                 max_element = angle
+        flag = False
         while max_element in p:
             p.remove(max_element)
+            flag = True
+        if flag:
+            geometric_predicates['parallel'].append(p)
     # Infer parallels
-    print(perpendiculars)
-    geometric_predicates['parallel'] += perpendiculars
+    # geometric_predicates['parallel'] += perpendiculars
 
 
 def test_angle():
-    perpendiculars = geometric_predicates['perpendicular']
+    perpendiculars = geometric_predicates['perpendicular'].copy()
     for per_instance in perpendiculars:
         pass
+
 
 def is_same(l1, l2):
     l11 = l1.copy()
@@ -250,18 +261,35 @@ def is_same(l1, l2):
     l22.sort()
     return l11 == l22
 
+
+def get_parallels(name):
+    for i in geometric_predicates['parallel']:
+        for n in i:
+            if n == name:
+                return i
+    return []
+
+
+def delete_2d_repetition(l):
+    for i in l:
+        i.sort()
+    # Trust me, don't try to understand how this works
+    *y, = map(list, {*map(tuple, l)})
+    return y
+
+
 def test_parallel():
     parallels = geometric_predicates['parallel'].copy()
     for i in range(len(parallels)):
         for j in range(len(parallels)):
-            if i!= j and len(common_member(parallels[i], parallels[j])) > 0:
+            if i != j and len(common_member(parallels[i], parallels[j])) > 0:
                 parallels[i] += parallels[j]
                 parallels[j] = []
     for i in range(len(parallels)):
         parallels[i] = delete_repetition(parallels[i])
     while [] in parallels:
         parallels.remove([])
-    orig = geometric_predicates['parallel']
+    orig = geometric_predicates['parallel'].copy()
     for i in parallels:
         has = False
         for j in orig:
@@ -271,11 +299,68 @@ def test_parallel():
             solution['parallel'].append(i)
     geometric_predicates['parallel'] = parallels
 
+    # Infer perpendicular from parallel
+    for p in geometric_predicates['perpendicular'].copy():
+        p.sort()
+        e0 = p[0]
+        e1 = p[1]
+        p0 = get_parallels(e0)
+        p1 = get_parallels(e1)
+        for i in p0:
+            solution['perpendicular'].append([i, e1])
+        for i in p1:
+            solution['perpendicular'].append([i, e0])
+        delete_2d_repetition(solution['perpendicular'])
+        for i in solution['perpendicular']:
+            if p[0] == i[0] and p[1] == i[1]:
+                solution['perpendicular'].remove(i)
+
+
+def map_perpendicular_to_angle():
+    perpendiculars = geometric_predicates['perpendicular'].copy()
+    sensitive_edges = []
+    for key in edge_to_angle_table:
+        sensitive_edges.append(edge_to_angle_table[key])
+    for p in perpendiculars:
+        # Test if have corresponding angle
+        p0 = p[0]
+        p0_parallels = []
+        p1 = p[1]
+        p1_parallels = []
+        for pa in geometric_predicates['parallel']:
+            if p0 in pa:
+                p0_parallels = pa
+            if p1 in pa:
+                p1_parallels = pa
+        p0_sensitive = ''
+        p1_sensitive = ''
+        valid_edges = []
+        for i in p0_parallels:
+            for j in p1_parallels:
+                if i != j:
+                    if [i, j] in sensitive_edges or [j, i] in sensitive_edges:
+                        valid_edges.append([i, j])
+        for v in valid_edges:
+            for key in edge_to_angle_table:
+                te = edge_to_angle_table[key]
+                if (te[0] == v[0] and te[1] == v[1]) or (te[1] == v[0] and te[0] == v[1]):
+                    angle_record_table[key] = 90
+
+
+def test_similar():
+    # The circumstance of similar is unique
+    sensitive_edge = ['e6b', 'e7a']
+    for p in geometric_predicates['perpendicular'].copy():
+        if sensitive_edge[0] in p and sensitive_edge[1] in p:
+            solution['similar'].append(['ar1', 'ar5'])
+            solution['similar'].append(['ar2', 'ar3'])
+
 
 def solve():
     test_equal()
     test_perpendicular()
     test_parallel()
+    map_perpendicular_to_angle()
     test_angle()
 
 
@@ -286,11 +371,13 @@ def get_all():
 
 def main():
     set_equal('a5b', 'a5c')
-    set_parallel('e7a', 'e2b')
-    set_perpendicular('e1a', 'e2a')
+    # set_parallel('e7a', 'e2b')
+    set_perpendicular('e1c', 'e1b')
     set_perpendicular('e2a', 'e3a')
 
-    original_parallel = geometric_predicates['parallel']
+    # set_perpendicular('e3c', 'e3b')
+    # et_perpendicular('e3b', 'e4a')
+
     print(get_all())
 
 
